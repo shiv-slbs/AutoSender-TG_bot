@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pyrogram Session Files
+*.session
+*.session-journal
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Render deployment files (if not needed in repo)
+# render.yaml (uncomment if you want to ignore it)
+
+# Virtualenv
+*.egg-info/
+.installed.cfg
+*.egg
