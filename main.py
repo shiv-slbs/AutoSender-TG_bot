@@ -54,10 +54,13 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         return
 
 def start_dummy_server():
-    # Render automatically injects the PORT environment variable (default: 10000)
     port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
-    server.serve_forever()
+    try:
+        server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+        logger.info(f"Health check HTTP server successfully listening on 0.0.0.0:{port}")
+        server.serve_forever()
+    except Exception as e:
+        logger.error(f"Failed to bind dummy HTTP server on port {port}: {e}")
 
 def validate_config():
     missing = []
