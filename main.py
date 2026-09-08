@@ -9,6 +9,8 @@ import urllib.request
 import urllib.error
 import requests
 from pyrogram import Client, errors
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +42,23 @@ except ValueError:
 MIN_INTERVAL_MINUTES = int(os.getenv("MIN_INTERVAL_MINUTES", "15"))
 MAX_INTERVAL_MINUTES = int(os.getenv("MAX_INTERVAL_MINUTES", "30"))
 
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"OK - Bot is running")
+
+    # Silence default console logging for health check pings
+    def log_message(self, format, *args):
+        return
+
+def start_dummy_server():
+    # Render automatically injects the PORT environment variable (default: 10000)
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    server.serve_forever()
+
 def validate_config():
     missing = []
     if not BOT_TOKEN: missing.append("BOT_TOKEN")
@@ -61,7 +80,8 @@ def fetch_posts_from_sheet(sheet_link, fallback_posts=None):
         fallback_posts = []
         
     try:
-        response = requests.get(sheet_link, timeout=10)
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        response = requests.get(sheet_link, headers=headers, timeout=10)
         response.raise_for_status()
         
         reader = csv.DictReader(response.text.splitlines())
@@ -136,7 +156,6 @@ async def dispatch_post(client, post):
     button_text = post.get("button_text")
     button_url = post.get("button_url")
     
-    # Attempt Pyrogram natively first
     from pyrogram.enums import ParseMode
     parse_mode = None
     if parse_mode_str:
@@ -165,12 +184,18 @@ async def dispatch_post(client, post):
                 reply_markup=reply_markup,
                 parse_mode=parse_mode
             )
+    except errors.WebpageCurlFailed:
+        logger.warning("Media URL unreachable by Telegram. Retrying as text-only message...")
+        await client.send_message(
+            chat_id=TARGET_CHAT_ID,
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode
+        )
     except (errors.PeerIdInvalid, ValueError) as e:
         if isinstance(e, ValueError) and "Peer id invalid" not in str(e):
             raise
-        # MTProto needs an access hash mapped for numerical channel IDs if the bot just started
         dispatch_http_fallback(BOT_TOKEN, TARGET_CHAT_ID, text, media_url, button_text, button_url, parse_mode_str)
-
 
 async def main():
     logger.info(f"Loaded TARGET_CHAT_ID successfully. Value: {TARGET_CHAT_ID} Type: {type(TARGET_CHAT_ID)}")
@@ -233,4 +258,5 @@ async def main():
         await app.stop()
 
 if __name__ == "__main__":
+    threading.Thread(target=start_dummy_server, daemon=True).start()
     asyncio.run(main())
