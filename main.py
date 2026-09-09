@@ -153,7 +153,7 @@ def dispatch_http_fallback(bot_token, chat_id, text, media_url, button_text, but
         raise e
 
 async def dispatch_post(client, post):
-    text = post.get("text", "")
+    text = post.get("text", "").replace("\\n", "\n")
     media_url = post.get("media_url")
     parse_mode_str = post.get("parse_mode", None)
     button_text = post.get("button_text")
