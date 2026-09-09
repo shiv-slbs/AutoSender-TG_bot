@@ -12,7 +12,6 @@ from pyrogram import Client, errors
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -20,7 +19,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load env variables (if a local .env is present)
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -31,7 +29,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 API_ID = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH")
 POSTS_GSHEET_LINK = os.getenv("POSTS_GSHEET_LINK")
-# 1. Exactly preserving negative sign per instructions
 TARGET_CHAT_ID_RAW = os.getenv("TARGET_CHAT_ID")
 try:
     if TARGET_CHAT_ID_RAW:
@@ -49,7 +46,6 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"OK - Bot is running")
 
-    # Silence default console logging for health check pings
     def log_message(self, format, *args):
         return
 
@@ -220,7 +216,6 @@ async def main():
         while True:
             if not post_deck:
                 logger.info("Deck empty or starting up. Fetching posts from Google Sheet...")
-                # Fetch without fallback list so we can detect an empty payload natively
                 fetched_posts = fetch_posts_from_sheet(POSTS_GSHEET_LINK, fallback_posts=None)
                 if not fetched_posts:
                     logger.warning("Google Sheet data is empty or fetch failed. Retrying in 60s...")
@@ -238,14 +233,12 @@ async def main():
                 await dispatch_post(app, current_post)
                 logger.info(f"Successfully dispatched post ID: {current_post.get('id')}")
             except (errors.FloodWait, urllib.error.HTTPError) as e:
-                # Basic handling - sleep and retry
                 if isinstance(e, errors.FloodWait):
                     wait_time = e.value
                 else:
-                    wait_time = 30 # Default HTTP limit backoff
+                    wait_time = 30
                 logger.warning(f"Rate limited: sleeping for {wait_time} seconds.")
                 await asyncio.sleep(wait_time)
-                # Put the post back on top of the deck to be fetched next
                 post_deck.append(current_post)
                 continue
             except Exception as e:
