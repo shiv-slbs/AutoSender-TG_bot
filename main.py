@@ -156,9 +156,9 @@ async def dispatch_post(client, post):
     text = post.get("text", "").replace("\\n", "\n")
     media_url = post.get("media_url")
     parse_mode_str = post.get("parse_mode", None)
-    button_text = post.get("button_text")
-    button_url = post.get("button_url")
-    
+    button_text = post.get("button_text", "").strip() or None
+    button_url = post.get("button_url", "").strip() or None
+
     from pyrogram.enums import ParseMode
     parse_mode = None
     if parse_mode_str:
